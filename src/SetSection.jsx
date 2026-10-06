@@ -1,5 +1,14 @@
 import { memo, useEffect, useRef, useState } from 'react'
-import { cardBadges, cardmarketUrl, setTypeLabel } from './lib.js'
+import {
+  CT_CONDITION_FR,
+  bestPrice,
+  cardBadges,
+  cardmarketUrl,
+  formatPrice,
+  missingCost,
+  setTypeLabel,
+  worstCondition,
+} from './lib.js'
 
 export function SetIcon({ set, big = false }) {
   const [bad, setBad] = useState(false)
@@ -28,7 +37,33 @@ export function CardmarketLink({ card, set, compact = false }) {
   )
 }
 
-const CardTile = memo(function CardTile({ card, set, owned, onToggleCard, onZoom }) {
+function TilePrice({ entry, set, currency }) {
+  const best = bestPrice(entry, set.date)
+  if (!best) return <span className="price none" title="Aucune offre CardTrader Zero dans l'état voulu">—</span>
+  return (
+    <span className="price" title={`CardTrader Zero, ${CT_CONDITION_FR[best.condition]}`}>
+      {formatPrice(best.cents, currency)}
+    </span>
+  )
+}
+
+function SetPrice({ set, owned, price }) {
+  if (!price || price.status === 'off') return null
+  if (price.status === 'loading') return <p className="set-price">Prix CardTrader Zero…</p>
+  if (price.status === 'error') return <p className="set-price">Prix CardTrader indisponibles ({price.error})</p>
+  if (!price.data.matched) return <p className="set-price">Extension introuvable sur CardTrader</p>
+  const { cents, priced, noOffer } = missingCost(set, owned, price.data.cards)
+  if (!priced && !noOffer) return null
+  return (
+    <p className="set-price">
+      CardTrader Zero · {priced} manquante{priced > 1 ? 's' : ''} ≈ <b>{formatPrice(cents, price.data.currency)}</b> hors port
+      {noOffer ? ` · ${noOffer} sans offre` : ''} · état min {CT_CONDITION_FR[worstCondition(set.date)]}
+      {price.data.stale ? ' · (cache)' : ''}
+    </p>
+  )
+}
+
+const CardTile = memo(function CardTile({ card, set, owned, priceEntry, currency, onToggleCard, onZoom }) {
   const badges = cardBadges(card)
   return (
     <div className={'tile' + (owned ? ' owned' : '')}>
@@ -55,6 +90,7 @@ const CardTile = memo(function CardTile({ card, set, owned, onToggleCard, onZoom
           {badges.map((b) => (
             <span className="badge" key={b}>{b}</span>
           ))}
+          {currency && <TilePrice entry={priceEntry} set={set} currency={currency} />}
           <CardmarketLink card={card} set={set} compact />
         </div>
         {card.a && <div className="meta-artist" title={card.a}>{card.a}</div>}
@@ -75,6 +111,7 @@ const SetSection = memo(function SetSection({
   onToggleSet,
   onPage,
   onZoom,
+  price,
 }) {
   const all = stats.owned === stats.total
   const some = stats.owned > 0 && !all
@@ -92,6 +129,7 @@ const SetSection = memo(function SetSection({
   const pct = Math.round((stats.owned / stats.total) * 100)
   const year = set.date.slice(0, 4)
   const filtered = cards.length !== set.cards.length
+  const priceData = price?.status === 'ok' ? price.data : null
 
   return (
     <section className={'set' + (all ? ' complete' : '') + (stats.owned > 0 ? ' started' : '')}>
@@ -143,6 +181,7 @@ const SetSection = memo(function SetSection({
         </div>
       </div>
 
+      {open && <SetPrice set={set} owned={owned} price={price} />}
       {open && (
         <div className="grid">
           {cards.map((c) => (
@@ -151,6 +190,8 @@ const SetSection = memo(function SetSection({
               card={c}
               set={set}
               owned={!!owned[c.id]}
+              priceEntry={priceData?.cards?.[c.id]}
+              currency={priceData?.matched ? priceData.currency : null}
               onToggleCard={onToggleCard}
               onZoom={onZoom}
             />

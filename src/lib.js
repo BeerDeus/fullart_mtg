@@ -210,3 +210,59 @@ export function ownedToCsv(sets, owned, pages) {
   }
   return '﻿' + rows.map((r) => r.map(esc).join(';')).join('\r\n')
 }
+
+// --- Prix CardTrader Zero
+// États CardTrader du meilleur au pire ; équivalences Cardmarket : Slightly Played ≈ Excellent, Moderately Played ≈ Good / Light Played
+export const CT_CONDITIONS = ['Mint', 'Near Mint', 'Slightly Played', 'Moderately Played', 'Played', 'Heavily Played', 'Poor']
+export const CT_CONDITION_FR = {
+  Mint: 'Mint',
+  'Near Mint': 'NM',
+  'Slightly Played': 'Excellent',
+  'Moderately Played': 'Good / LP',
+  Played: 'Played',
+  'Heavily Played': 'Heavily Played',
+  Poor: 'Poor',
+}
+// Pire état accepté selon l'âge de l'extension : récent = NM, puis on tolère plus d'usure
+export const CT_AGE_RULES = [
+  [10, 'Moderately Played'],
+  [4, 'Slightly Played'],
+  [0, 'Near Mint'],
+]
+
+export function worstCondition(releaseDate, now = Date.now()) {
+  const years = (now - Date.parse(releaseDate)) / (365.25 * 24 * 3600 * 1000)
+  if (Number.isNaN(years)) return 'Near Mint'
+  return CT_AGE_RULES.find(([min]) => years >= min)?.[1] || 'Near Mint'
+}
+
+// entry = { b: idBlueprint, p: { 'Near Mint': cents, … } } → { cents, condition } | null
+export function bestPrice(entry, releaseDate, now = Date.now()) {
+  if (!entry?.p) return null
+  const allowed = CT_CONDITIONS.slice(0, CT_CONDITIONS.indexOf(worstCondition(releaseDate, now)) + 1)
+  let best = null
+  for (const condition of allowed) {
+    const cents = entry.p[condition]
+    if (cents != null && (!best || cents < best.cents)) best = { cents, condition }
+  }
+  return best
+}
+
+// Total des cartes manquantes d'une extension
+export function missingCost(set, owned, cardsPrices, now = Date.now()) {
+  let cents = 0
+  let priced = 0
+  let noOffer = 0
+  for (const c of set.cards) {
+    if (owned[c.id]) continue
+    const best = bestPrice(cardsPrices?.[c.id], set.date, now)
+    if (best) {
+      cents += best.cents
+      priced++
+    } else noOffer++
+  }
+  return { cents, priced, noOffer }
+}
+
+export const formatPrice = (cents, currency = 'EUR') =>
+  new Intl.NumberFormat('fr-FR', { style: 'currency', currency }).format(cents / 100)

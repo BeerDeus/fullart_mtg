@@ -3,16 +3,21 @@ import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
 import { FieldPath, deleteField, doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore'
 import { auth, db, provider } from './firebase.js'
 import { loadData } from './scryfall.js'
+import { fetchSetPrices } from './cardtrader.js'
 import {
   BASE_LANDS,
+  CT_CONDITION_FR,
   DEFAULT_FILTERS,
   buildSets,
   cardBadges,
   filterSets,
   globalStats,
   keepCard,
+  bestPrice,
+  formatPrice,
   ownedToCsv,
   setTypeLabel,
+  worstCondition,
 } from './lib.js'
 import SetSection, { CardmarketLink, SetIcon } from './SetSection.jsx'
 
@@ -49,7 +54,25 @@ function authMessage(e) {
   }
 }
 
-function Lightbox({ zoom, owned, onToggle, onClose }) {
+function CardPrice({ card, set, price }) {
+  if (!price || price.status === 'off') return null
+  if (price.status === 'loading') return <div className="ct-price muted">Prix CardTrader Zero…</div>
+  if (price.status === 'error') return <div className="ct-price muted">Prix CardTrader indisponible ({price.error})</div>
+  const worst = CT_CONDITION_FR[worstCondition(set.date)]
+  const best = bestPrice(price.data.cards?.[card.id], set.date)
+  return (
+    <div className="ct-price">
+      {best ? (
+        <>CardTrader Zero : dès <b>{formatPrice(best.cents, price.data.currency)}</b> ({CT_CONDITION_FR[best.condition]})</>
+      ) : (
+        <span className="muted">Aucune offre CardTrader Zero</span>
+      )}
+      <span className="muted"> · état min {worst}</span>
+    </div>
+  )
+}
+
+function Lightbox({ zoom, owned, price, onToggle, onClose }) {
   useEffect(() => {
     const h = (e) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', h)
@@ -68,6 +91,7 @@ function Lightbox({ zoom, owned, onToggle, onClose }) {
               {set.name} ({set.code.toUpperCase()}){card.a ? ` · ${card.a}` : ''}
             </div>
             <div className="muted">{cardBadges(card).join(' · ')}</div>
+            <CardPrice card={card} set={set} price={price} />
           </div>
           <div className="lightbox-actions">
             <CardmarketLink card={card} set={set} />
@@ -96,6 +120,8 @@ export default function App() {
   const [open, setOpen] = useState(() => new Set())
   const [zoom, setZoom] = useState(null)
   const [toast, setToast] = useState('')
+  const [prices, setPrices] = useState({}) // code set → { status: loading|ok|error|off, data?, error? }
+  const pricesAsked = useRef(new Set())
 
   const refRef = useRef(null)
   const ownedRef = useRef(owned)
@@ -245,6 +271,19 @@ export default function App() {
   )
   const onZoom = useCallback((card, set) => setZoom({ card, set }), [])
 
+  // --- prix CardTrader Zero : chargés à l'ouverture d'une extension
+  useEffect(() => {
+    for (const code of open) {
+      if (pricesAsked.current.has(code)) continue
+      pricesAsked.current.add(code)
+      setPrices((p) => ({ ...p, [code]: { status: 'loading' } }))
+      fetchSetPrices(code).then(
+        (d) => setPrices((p) => ({ ...p, [code]: { status: 'ok', data: d } })),
+        (e) => setPrices((p) => ({ ...p, [code]: { status: e.off ? 'off' : 'error', error: e.message } })),
+      )
+    }
+  }, [open])
+
   const exportCsv = () => {
     const blob = new Blob([ownedToCsv(sets, owned, pages)], { type: 'text/csv;charset=utf-8' })
     const a = document.createElement('a')
@@ -391,6 +430,7 @@ export default function App() {
             owned={owned}
             page={String(pages[set.code] ?? '')}
             open={open.has(set.code)}
+            price={prices[set.code]}
             onOpen={toggleOpen}
             onToggleCard={toggleCard}
             onToggleSet={toggleSet}
@@ -411,6 +451,7 @@ export default function App() {
         <Lightbox
           zoom={zoom}
           owned={!!owned[zoom.card.id]}
+          price={prices[zoom.set.code]}
           onToggle={toggleCard}
           onClose={() => setZoom(null)}
         />

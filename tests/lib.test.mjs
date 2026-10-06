@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  buildSets, filterSets, globalStats, setStats, landRank, natCompare, cardBadges, cardmarketUrl, ownedToCsv, keepCard, DEFAULT_FILTERS,
+  buildSets, filterSets, globalStats, setStats, landRank, natCompare, cardBadges, cardmarketUrl, worstCondition, bestPrice, missingCost, formatPrice, ownedToCsv, keepCard, DEFAULT_FILTERS,
 } from '../src/lib.js'
 
 const mk = (id, n, s, c, extra = {}) => ({
@@ -91,4 +91,22 @@ test('lien Cardmarket : idProduct sinon recherche « CODE numéro »', () => {
   const set = { code: 'fra' }
   assert.equal(cardmarketUrl(mk('a', 'Island', 'fra', '386', { m: 812345 }), set), 'https://www.cardmarket.com/fr/Magic/Products?idProduct=812345')
   assert.equal(cardmarketUrl(mk('b', 'Island', 'fra', '386'), set), 'https://www.cardmarket.com/fr/Magic/Products/Search?searchString=FRA+386')
+})
+
+test('CardTrader : état min selon l\'âge, meilleur prix, total manquantes', () => {
+  const now = Date.parse('2026-10-01')
+  assert.equal(worstCondition('2025-06-01', now), 'Near Mint')
+  assert.equal(worstCondition('2020-01-01', now), 'Slightly Played')
+  assert.equal(worstCondition('2009-10-02', now), 'Moderately Played')
+  const entry = { b: 1, p: { 'Near Mint': 300, 'Slightly Played': 150, 'Moderately Played': 90, Played: 20 } }
+  assert.deepEqual(bestPrice(entry, '2025-06-01', now), { cents: 300, condition: 'Near Mint' })
+  assert.deepEqual(bestPrice(entry, '2020-01-01', now), { cents: 150, condition: 'Slightly Played' })
+  assert.deepEqual(bestPrice(entry, '2009-10-02', now), { cents: 90, condition: 'Moderately Played' })
+  assert.deepEqual(bestPrice({ p: { Mint: 250, 'Near Mint': 300 } }, '2025-06-01', now), { cents: 250, condition: 'Mint' })
+  assert.equal(bestPrice({ p: { Played: 20 } }, '2025-06-01', now), null)
+  assert.equal(bestPrice(undefined, '2025-06-01', now), null)
+  const set = { date: '2025-06-01', cards: [{ id: 'a' }, { id: 'b' }, { id: 'c' }] }
+  const prices = { a: { p: { 'Near Mint': 120 } }, b: { p: { 'Near Mint': 80 } }, c: { p: { Played: 5 } } }
+  assert.deepEqual(missingCost(set, { a: true }, prices, now), { cents: 80, priced: 1, noOffer: 1 })
+  assert.equal(formatPrice(1240).replace(/\s/g, ' '), '12,40 €')
 })

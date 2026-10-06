@@ -8,7 +8,8 @@ Données et images : API Scryfall (récupérées par le navigateur, mises en cac
 1. **Règles Firestore** : Firebase Console > Firestore > Règles > coller le contenu de `firestore.rules` (= tes règles actuelles + un bloc `users/{uid}/binder/lands`) > Publier.
 2. **Domaine autorisé** : Firebase Console > Authentication > Paramètres > Domaines autorisés > ajouter le sous-domaine (ex `lands.m2s-photo.fr`). Sans ça, la connexion Google échoue (`auth/unauthorized-domain`).
 3. **Hostinger** : créer le sous-domaine, activer le SSL, puis envoyer le **contenu** de `dist/` à la racine du sous-domaine (`public_html`). Pas de Node.js nécessaire.
-4. Ouvrir le site, se connecter. Sur Android : menu du navigateur > Installer l'application.
+4. **Prix CardTrader (optionnel)** : copier `cardtrader-config.example.php` en `cardtrader-config.php` **au-dessus** de `public_html` (ex `domains/<domaine>/cardtrader-config.php`), y coller le token (CardTrader > Paramètres > API). `dist/api/cardtrader.php` part avec le reste de `dist/`. Sans config, les prix sont simplement masqués.
+5. Ouvrir le site, se connecter. Sur Android : menu du navigateur > Installer l'application.
 
 ## Dev
 
@@ -27,6 +28,8 @@ npm run build    # génère dist/
 - `src/App.jsx` : app (auth, chargement, filtres, lightbox)
 - `src/SetSection.jsx` : bloc d'une extension, tuile carte, lien Cardmarket
 - `src/lib.js` : logique pure (tri, filtres, stats, CSV, URL Cardmarket), testée dans `tests/`
+- `src/cardtrader.js` : appel du proxy prix CardTrader
+- `public/api/cardtrader.php` : proxy PHP CardTrader
 - `src/scryfall.js` : récupération + cache du catalogue Scryfall
 - `src/firebase.js` : config Firebase
 - `src/styles.css` : styles
@@ -41,6 +44,13 @@ npm run build    # génère dist/
 - Une case par impression = par n° de collector. Les variantes d'un même set (ex 250 / 250a) sont des cartes distinctes.
 - « Actualiser » recharge le catalogue (sinon rechargé automatiquement après 7 jours). Si Scryfall est injoignable, le dernier cache est utilisé.
 - Un terrain full art absent de la liste = Scryfall ne le marque pas `full_art`.
+
+## Prix CardTrader Zero
+
+- `public/api/cardtrader.php` (proxy PHP, le token ne quitte jamais le serveur) : `GET /api/cardtrader.php?set=<code>` → prix min par carte (id Scryfall) et par état, uniquement vendeurs CardTrader Zero, hors foil / gradées / signées / altérées. Cache 6 h dans `cardtrader-cache/` à côté de la config.
+- Correspondance exacte via le `scryfall_id` des blueprints CardTrader ; extension retrouvée par son code.
+- État minimum selon l'âge de l'extension (`CT_AGE_RULES` dans `src/lib.js`) : < 4 ans NM, 4–10 ans Slightly Played (≈ Excellent), ≥ 10 ans Moderately Played (≈ Good / Light Played).
+- Prix chargés à l'ouverture d'une extension ; total des manquantes hors frais de port du colis Zero.
 
 ## Modèle Firestore
 
