@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Existant, inchangé
+    match /games/{gameId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if request.auth != null;
+    }
+
+    // Deck Deal : chacun ne lit et n'écrit que ses propres decks
+    match /users/{uid}/decks/{deckId} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'text', 'opts', 'cards', 'history', 'snap', 'createdAt', 'updatedAt'])
+        && request.resource.data.keys().hasAll(['name', 'text', 'updatedAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 120
+        && request.resource.data.text is string && request.resource.data.text.size() <= 60000
+        && request.resource.data.updatedAt is number
+        && (!('history' in request.resource.data)
+            || (request.resource.data.history is list && request.resource.data.history.size() <= 40))
+        // Prix gardés carte par carte (deck viewer) : facultatif, borné
+        && (!('snap' in request.resource.data)
+            || (request.resource.data.snap is map
+                && request.resource.data.snap.keys().hasOnly(['at', 'mode', 'lang', 'sig', 'items', 'pv', 'pa'])
+                && request.resource.data.snap.items is list
+                && request.resource.data.snap.items.size() <= 400));
+    }
+
+    // Deck Deal : collection possédée (un seul document par compte, liste « 3 Sol Ring » une carte par ligne)
+    match /users/{uid}/meta/{docId} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && docId == 'collection'
+        && request.resource.data.keys().hasOnly(['text', 'count', 'updatedAt'])
+        && request.resource.data.keys().hasAll(['text', 'updatedAt'])
+        && request.resource.data.text is string && request.resource.data.text.size() <= 900000
+        && request.resource.data.updatedAt is number
+        && (!('count' in request.resource.data) || request.resource.data.count is number);
+    }
+
+    // NOUVEAU — Classeur Full Art : un seul document par compte
+    //   users/{uid}/binder/lands = { owned: { <scryfallId>: true }, pages: { <codeSet>: "12" }, updatedAt }
+    match /users/{uid}/binder/{docId} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && docId == 'lands'
+        && request.resource.data.keys().hasOnly(['owned', 'pages', 'updatedAt'])
+        && request.resource.data.keys().hasAll(['owned', 'updatedAt'])
+        && request.resource.data.owned is map
+        && request.resource.data.owned.size() <= 5000
+        && request.resource.data.updatedAt is number
+        && (!('pages' in request.resource.data)
+            || (request.resource.data.pages is map && request.resource.data.pages.size() <= 1500));
+    }
+  }
+}
