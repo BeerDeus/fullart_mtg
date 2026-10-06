@@ -28,6 +28,7 @@ npm run build    # génère dist/
 - `src/App.jsx` : app (auth, chargement, filtres, lightbox)
 - `src/SetSection.jsx` : bloc d'une extension, tuile carte, lien Cardmarket
 - `src/lib.js` : logique pure (tri, filtres, stats, CSV, URL Cardmarket), testée dans `tests/`
+- `src/ExportDialog.jsx` : export des manquantes pour une liste d'envies Cardmarket
 - `src/cardtrader.js` : appel du proxy prix CardTrader
 - `public/api/cardtrader.php` : proxy PHP CardTrader
 - `src/scryfall.js` : récupération + cache du catalogue Scryfall
@@ -51,6 +52,12 @@ npm run build    # génère dist/
 - Correspondance exacte via le `scryfall_id` des blueprints CardTrader ; extension retrouvée par son code.
 - État minimum selon l'âge de l'extension (`CT_AGE_RULES` dans `src/lib.js`) : < 4 ans NM, 4–10 ans Slightly Played (≈ Excellent), ≥ 10 ans Moderately Played (≈ Good / Light Played).
 - Prix chargés à l'ouverture d'une extension ; total des manquantes hors frais de port du colis Zero.
+
+## Export Cardmarket
+
+- Bouton « Manquantes → Cardmarket » (extensions affichées, selon les filtres) et bouton par extension ouverte.
+- Formats : `1 Island (FRA) 386`, `1 Island (Reality Fracture)`, nom seul regroupé, ou liens Cardmarket par carte.
+- Cardmarket : Wants › créer une liste › ajouter une liste de cartes › coller, puis Assistant d'achat (optimise vendeurs + frais de port).
 
 ## Modèle Firestore
 

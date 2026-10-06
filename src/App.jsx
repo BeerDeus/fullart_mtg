@@ -13,6 +13,7 @@ import {
   filterSets,
   globalStats,
   keepCard,
+  missingItems,
   bestPrice,
   formatPrice,
   ownedToCsv,
@@ -20,6 +21,7 @@ import {
   worstCondition,
 } from './lib.js'
 import SetSection, { CardmarketLink, SetIcon } from './SetSection.jsx'
+import ExportDialog from './ExportDialog.jsx'
 
 const FILTERS_KEY = 'fa-lands:filters'
 
@@ -119,6 +121,7 @@ export default function App() {
   const [filters, setFilters] = useState(loadFilters)
   const [open, setOpen] = useState(() => new Set())
   const [zoom, setZoom] = useState(null)
+  const [wants, setWants] = useState(null) // { title, items } pour l'export Cardmarket
   const [toast, setToast] = useState('')
   const [prices, setPrices] = useState({}) // code set → { status: loading|ok|error|off, data?, error? }
   const pricesAsked = useRef(new Set())
@@ -270,6 +273,11 @@ export default function App() {
     [],
   )
   const onZoom = useCallback((card, set) => setZoom({ card, set }), [])
+  const onExportSet = useCallback(
+    (set, cards) => setWants({ title: set.name, items: missingItems([{ set, cards }], ownedRef.current) }),
+    [],
+  )
+  const visibleMissing = useMemo(() => missingItems(visible, owned), [visible, owned])
 
   // --- prix CardTrader Zero : chargés à l'ouverture d'une extension
   useEffect(() => {
@@ -331,6 +339,15 @@ export default function App() {
         <div className="top-actions">
           <button type="button" className="btn" onClick={exportCsv} disabled={!data || !g.have} title="Exporter ma collection en CSV">
             Export CSV
+          </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setWants({ title: 'Extensions affichées', items: visibleMissing })}
+            disabled={!visibleMissing.length}
+            title="Cartes manquantes des extensions affichées (selon les filtres), pour une liste d'envies Cardmarket"
+          >
+            Manquantes → Cardmarket
           </button>
           <button type="button" className="btn" onClick={() => fetchData(true)} disabled={load.loading} title="Recharger le catalogue depuis Scryfall">
             Actualiser
@@ -436,6 +453,7 @@ export default function App() {
             onToggleSet={toggleSet}
             onPage={setPage}
             onZoom={onZoom}
+            onExport={onExportSet}
           />
         ))}
       </main>
@@ -456,6 +474,7 @@ export default function App() {
           onClose={() => setZoom(null)}
         />
       )}
+      {wants && <ExportDialog title={wants.title} items={wants.items} onClose={() => setWants(null)} />}
       {toast && <div className="toast" role="status">{toast}</div>}
     </div>
   )

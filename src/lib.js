@@ -266,3 +266,32 @@ export function missingCost(set, owned, cardsPrices, now = Date.now()) {
 
 export const formatPrice = (cents, currency = 'EUR') =>
   new Intl.NumberFormat('fr-FR', { style: 'currency', currency }).format(cents / 100)
+
+// --- Export des manquantes vers une liste d'envies Cardmarket
+export const WANTS_FORMATS = [
+  ['code', 'Nom (CODE) n°'],
+  ['set', 'Nom (Extension)'],
+  ['name', 'Nom seul, regroupé'],
+  ['links', 'Liens Cardmarket'],
+]
+
+// entries = [{ set, cards }] (extensions affichées) → [{ card, set }] non possédées
+export function missingItems(entries, owned) {
+  const out = []
+  for (const { set, cards } of entries) for (const card of cards) if (!owned[card.id]) out.push({ card, set })
+  return out
+}
+
+export function wantsText(items, format) {
+  if (format === 'name') {
+    const qty = new Map()
+    for (const { card } of items) qty.set(card.n, (qty.get(card.n) || 0) + 1)
+    return [...qty].map(([n, q]) => `${q} ${n}`).join('\n')
+  }
+  const line = {
+    code: ({ card, set }) => `1 ${card.n} (${set.code.toUpperCase()}) ${card.c}`,
+    set: ({ card, set }) => `1 ${card.n} (${set.name})`,
+    links: ({ card, set }) => `${card.n} #${card.c} (${set.code.toUpperCase()}) ${cardmarketUrl(card, set)}`,
+  }[format]
+  return items.map(line).join('\n')
+}

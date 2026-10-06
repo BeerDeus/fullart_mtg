@@ -111,6 +111,7 @@ const SetSection = memo(function SetSection({
   onToggleSet,
   onPage,
   onZoom,
+  onExport,
   price,
 }) {
   const all = stats.owned === stats.total
@@ -130,6 +131,7 @@ const SetSection = memo(function SetSection({
   const year = set.date.slice(0, 4)
   const filtered = cards.length !== set.cards.length
   const priceData = price?.status === 'ok' ? price.data : null
+  const missing = open ? cards.filter((c) => !owned[c.id]).length : 0
 
   return (
     <section className={'set' + (all ? ' complete' : '') + (stats.owned > 0 ? ' started' : '')}>
@@ -181,7 +183,16 @@ const SetSection = memo(function SetSection({
         </div>
       </div>
 
-      {open && <SetPrice set={set} owned={owned} price={price} />}
+      {open && (
+        <div className="set-extra">
+          <SetPrice set={set} owned={owned} price={price} />
+          {missing > 0 && (
+            <button type="button" className="btn small" onClick={() => onExport(set, cards)}>
+              {missing} manquante{missing > 1 ? 's' : ''} → Cardmarket
+            </button>
+          )}
+        </div>
+      )}
       {open && (
         <div className="grid">
           {cards.map((c) => (

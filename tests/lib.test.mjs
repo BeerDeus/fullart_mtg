@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  buildSets, filterSets, globalStats, setStats, landRank, natCompare, cardBadges, cardmarketUrl, worstCondition, bestPrice, missingCost, formatPrice, ownedToCsv, keepCard, DEFAULT_FILTERS,
+  buildSets, filterSets, globalStats, setStats, landRank, natCompare, cardBadges, cardmarketUrl, worstCondition, bestPrice, missingCost, formatPrice, missingItems, wantsText, ownedToCsv, keepCard, DEFAULT_FILTERS,
 } from '../src/lib.js'
 
 const mk = (id, n, s, c, extra = {}) => ({
@@ -109,4 +109,15 @@ test('CardTrader : état min selon l\'âge, meilleur prix, total manquantes', ()
   const prices = { a: { p: { 'Near Mint': 120 } }, b: { p: { 'Near Mint': 80 } }, c: { p: { Played: 5 } } }
   assert.deepEqual(missingCost(set, { a: true }, prices, now), { cents: 80, priced: 1, noOffer: 1 })
   assert.equal(formatPrice(1240).replace(/\s/g, ' '), '12,40 €')
+})
+
+test('export liste d\'envies Cardmarket', () => {
+  const fra = { code: 'fra', name: 'Reality Fracture' }
+  const entries = [{ set: fra, cards: [mk('a', 'Island', 'fra', '386'), mk('b', 'Island', 'fra', '387', { m: 42 }), mk('c', 'Forest', 'fra', '390')] }]
+  const items = missingItems(entries, { c: true })
+  assert.deepEqual(items.map((i) => i.card.id), ['a', 'b'])
+  assert.equal(wantsText(items, 'code'), '1 Island (FRA) 386\n1 Island (FRA) 387')
+  assert.equal(wantsText(items, 'set'), '1 Island (Reality Fracture)\n1 Island (Reality Fracture)')
+  assert.equal(wantsText(items, 'name'), '2 Island')
+  assert.equal(wantsText(items, 'links').split('\n')[1], 'Island #387 (FRA) https://www.cardmarket.com/fr/Magic/Products?idProduct=42')
 })

@@ -138,7 +138,9 @@ main { padding: 1rem; display: grid; gap: .8rem; }
 .cm-link:hover { border-color: var(--gold); }
 .price { font-size: .7rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); }
 .price.none { color: var(--muted); font-weight: 400; }
-.set-price { margin: 0; padding: .1rem .9rem .4rem; font-size: .82rem; color: var(--muted); }
+.set-extra { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem .8rem; padding: .1rem .9rem .5rem; }
+.set-extra:empty { display: none; }
+.set-price { margin: 0; font-size: .82rem; color: var(--muted); }
 .set-price b, .ct-price b { color: var(--gold); }
 .ct-price { margin-top: .2rem; }
 .meta-artist { color: var(--muted); font-size: .7rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -152,6 +154,16 @@ main { padding: 1rem; display: grid; gap: .8rem; }
   position: fixed; left: 50%; bottom: calc(1rem + env(safe-area-inset-bottom)); transform: translateX(-50%);
   background: #2a1613; border: 1px solid var(--red); color: #ffd9d4; padding: .6rem 1rem; border-radius: 12px; z-index: 60; max-width: 90vw;
 }
+
+/* export Cardmarket */
+.modal { width: min(92vw, 560px); display: grid; gap: .7rem; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 1rem; }
+.modal h2 { margin: 0; font-size: 1.05rem; }
+.modal p { margin: 0; }
+.modal textarea {
+  width: 100%; resize: vertical; min-height: 9rem; max-height: 50vh; padding: .6rem; border-radius: 10px;
+  background: var(--bg); border: 1px solid var(--line); color: var(--text); font: .82rem/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+a.btn { text-decoration: none; }
 
 /* lightbox */
 .lightbox { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, .86); display: grid; place-items: center; padding: 1rem; }
